@@ -1,0 +1,160 @@
+---
+title: "Peer-graded Assignment-1"
+author: "wassim"
+date: "May 19, 2018"
+output:
+  pdf_document: default
+  html_document: default
+---
+ Introduction
+
+ It is now possible to collect a large amount of data about personal movement  using activity monitoring devices such as a Fit bit, Nike Fuel band, or Jawbone  Up. These type of devices are part of the "quantified self" movement - a
+group of enthusiasts who take measurements about themselves regularly to 
+improve their health, to find patterns in their behavior, or because they are  tech geeks. But these data remain under-utilized both because the raw data 
+are hard to obtain and there is a lack of statistical methods and software 
+for processing and interpreting the data.
+
+This assignment makes use of data from a personal activity monitoring device.  This device collects data at 5 minute intervals through out the day. The data  consists of two months of data from an anonymous individual collected during  the months of October and November, 2012 and include the number of steps 
+taken in 5 minute intervals each day.
+
+1. in this step we set the working directory where data file exist and we load      the data and we get details information about data frame.
+
+```{r if (!exists("rawdata"))}
+   setwd("C:/Users/Administrator/Desktop/coursera")
+    activity <- read.csv("activity.csv", header=TRUE, sep=",")
+str(activity)
+head(activity)
+tail(activity)
+```
+ 1.1 Process/transform the data into a format suitable for analysis
+
+```{r}
+library(lubridate)
+activity$date<-ymd(activity$date)
+library(dplyr)
+groupActivity<-group_by(activity, date)
+newActivity<-summarize(groupActivity, steps= sum(steps, na.rm = TRUE ))
+newActivity
+```
+
+2.Histogram of the total number of steps taken each day
+
+```{r}
+hist(newActivity$steps, breaks=8,main = "Total number of steps per day", xlab = "Steps", col = "blue") 
+```
+
+3. Mean and median number of steps taken each day
+
+```{r}
+mean(newActivity$steps)
+```
+```{r}
+median(newActivity$steps)
+```
+4.Time series plot of the average number of steps taken
+   4.1 First we fix our data set then find the average number of steps taken.
+ 
+```{r}
+intervalGroupActivity <- group_by(activity, interval)
+library(dplyr)
+averageActivity <-summarize(intervalGroupActivity, steps= mean(steps, na.rm = TRUE ))
+averageActivity  
+```
+
+     4.2 plotting 5-minute interval, on average across all the days in the   
+          dataset, contains the average number of steps taken
+
+```{r}
+plot(averageActivity$interval,averageActivity$steps, type="l", col="red",main="Time series plot of the 5-minute interval \n and the average number of steps taken", xlab = "The 5-minute interval", ylab = "The average number of steps taken")
+```
+
+5.Which is the 5-minute interval that, on average, contains the maximum number of steps
+
+```{r}
+averageActivity[which.max(averageActivity$steps), ]$interval
+```
+
+
+6.Code to describe and show a strategy for imputing missing data.
+  6.1 Calculate and report the total number of rows with NAs
+  
+```{r}
+summary(activity)
+```
+
+
+  So we have 2304 NA's
+  
+  
+  
+  6.2 Create a new dataset that is equal to the original dataset but with the   
+      missing data filled in. using the mean for that 5-minute interval.
+      
+```{r} 
+newData<-activity
+for (i in 1:nrow(newData))
+{
+  if (is.na(newData$steps[i])){
+    newData$steps[i]<-averageActivity[which(newData$interval[i] == averageActivity$interval),]$steps
+  }
+}
+summary(newData)
+```
+```{r} 
+sum(is.na(newData))
+```
+       So the result show no NA's in the new dataset.
+       
+       
+   6.3 Calculate and report the mean and median total number of steps taken per 
+       day. Do these values differ from the estimates from the first part of the        assignment? What is the impact of imputing missing data on the estimates 
+       of the total daily number of steps?
+```{r} 
+groupNewData <- group_by(newData, date)
+newFillData<-summarize(groupNewData, steps= sum(steps, na.rm = TRUE ))
+newFillData
+```
+
+7. Histogram of the total number of steps taken each day.
+```{r} 
+hist(newFillData$steps, breaks=8,main = "Total number of steps per day", xlab = "Steps", col = "blue")
+```
+
+7.1 So, after imputing the missing data, the new mean of total steps taken per           day equal that of the old mean; the new median of total steps taken             per day is greater than that of the old median. We can see from the             Histograms the big change is that the NA's have move from the first   
+          class.
+          
+```{r} 
+mean(newFillData$steps)
+```
+```{r} 
+median(newFillData$steps)
+```
+```{r} 
+par(mfrow=c(1,2))
+hist(newActivity$steps, breaks=8,main = "Total number of steps per day", xlab = "Steps", col = "blue")
+hist(newFillData$steps, breaks=8,main = "Total number of steps per day \n with no NA's", xlab = "Steps", col = "blue")
+```
+
+8. First we have to make our new dataset.
+
+```{r} 
+for (i in 1:nrow(activity))
+{
+  if(weekdays(activity$date[i])=="Monday" |weekdays(activity$date[i])=="Friday"){ 
+    activity$weekdays[i]<-"weekend"
+  }else{activity$weekdays[i]<-"weekday"}
+}
+
+intervalGroupActivityNA <- group_by(activity, interval,weekdays)
+dataNA<-summarize(intervalGroupActivityNA, steps= mean(steps, na.rm = TRUE ))
+```
+
+8.1  Panel plot comparing the average number of steps taken per 5-minute interval across weekdays and weekends.
+
+```{r}
+library(ggplot2) 
+qplot(interval,steps, data = dataNA,facets = weekdays~., geom="line",col="orange")
+```
+
+
+
